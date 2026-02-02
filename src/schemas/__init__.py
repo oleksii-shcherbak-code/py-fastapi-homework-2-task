@@ -1,5 +1,5 @@
 from schemas.movies import (
-    MovieDetailSchema,
+    MovieDetailResponseSchema,
     MovieListResponseSchema,
-    MovieListItemSchema
+    MovieShortResponse
 )
