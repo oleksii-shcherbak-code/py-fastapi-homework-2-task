@@ -1,88 +1,97 @@
-from datetime import date, timedelta
-from typing import Optional, List
+from datetime import date
+from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from database.models import MovieStatusEnum
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
-class MovieBase(BaseModel):
-    name: str = Field(max_length=255)
-    date: date
-    score: float = Field(ge=0, le=100)
-    overview: Optional[str] = None
-    status: MovieStatusEnum
-    budget: float = Field(ge=0)
-    revenue: float = Field(ge=0)
-
-    @field_validator("date")
-    @classmethod
-    def check_future_date(cls, v: date) -> date:
-        one_year_from_now = date.today() + timedelta(days=365)
-
-        if v > one_year_from_now:
-            raise ValueError("The date must not be more than one year in the future.")
-        return v
-
-
-class MovieShortResponse(BaseModel):
+class CountrySchema(BaseModel):
     id: int
-    name: str = Field(max_length=255)
+    code: str
+    name: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GenreSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ActorSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LanguageSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MovieListItemSchema(BaseModel):
+    id: int
+    name: str
     date: date
     score: float
-    overview: Optional[str] = None
+    overview: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class MovieListResponseSchema(BaseModel):
-    movies: List[MovieShortResponse]
-    prev_page: Optional[str] = None
-    next_page: Optional[str] = None
+    movies: List[MovieListItemSchema]
+    prev_page: Optional[str]
+    next_page: Optional[str]
     total_pages: int
     total_items: int
 
-    model_config = ConfigDict(from_attributes=True)
 
-
-class MovieCreateSchema(MovieBase):
-    country: str = Field(max_length=3)
+class MovieCreateSchema(BaseModel):
+    name: str = Field(max_length=255)
+    date: date
+    score: float
+    overview: Optional[str] = None
+    status: str
+    budget: float
+    revenue: float
+    country: str
     genres: List[str]
     actors: List[str]
     languages: List[str]
 
+    @field_validator("score")
+    @classmethod
+    def validate_score(cls, v: float) -> float:
+        if not 0 <= v <= 100:
+            raise ValueError("Score must be between 0 and 100")
+        return v
 
-class MovieCountrySchema(BaseModel):
-    id: int
-    code: str
-    name: Optional[str] = None
-    model_config = ConfigDict(from_attributes=True)
+    @field_validator("budget", "revenue")
+    @classmethod
+    def validate_money(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("Must be non-negative")
+        return v
 
 
-class AdditionalInfoSchema(BaseModel):
+class MovieDetailSchema(BaseModel):
     id: int
     name: str
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MovieGenresSchema(AdditionalInfoSchema):
-    pass
-
-
-class MovieActorsSchema(AdditionalInfoSchema):
-    pass
-
-
-class MovieLanguagesSchema(AdditionalInfoSchema):
-    pass
-
-
-class MovieDetailResponseSchema(MovieBase):
-    id: int
-    country: MovieCountrySchema
-    genres: List[MovieGenresSchema]
-    actors: List[MovieActorsSchema]
-    languages: List[MovieLanguagesSchema]
+    date: date
+    score: float
+    overview: Optional[str]
+    status: str
+    budget: float
+    revenue: float
+    country: CountrySchema
+    genres: List[GenreSchema]
+    actors: List[ActorSchema]
+    languages: List[LanguageSchema]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,17 +99,22 @@ class MovieDetailResponseSchema(MovieBase):
 class MovieUpdateSchema(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     date: Optional[date] = None
-    score: Optional[float] = Field(None, ge=0, le=100)
+    score: Optional[float] = None
     overview: Optional[str] = None
-    status: Optional[MovieStatusEnum] = None
-    budget: Optional[float] = Field(None, ge=0)
-    revenue: Optional[float] = Field(None, ge=0)
+    status: Optional[str] = None
+    budget: Optional[float] = None
+    revenue: Optional[float] = None
 
-    @field_validator("date")
+    @field_validator("score")
     @classmethod
-    def check_future_date(cls, v: Optional[date]) -> Optional[date]:
-        if v is None:
-            return v
-        if v > date.today() + timedelta(days=365):
-            raise ValueError("The date must not be more than one year in the future.")
+    def validate_score(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and not 0 <= v <= 100:
+            raise ValueError("Score must be between 0 and 100")
+        return v
+
+    @field_validator("budget", "revenue")
+    @classmethod
+    def validate_money(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("Must be non-negative")
         return v
