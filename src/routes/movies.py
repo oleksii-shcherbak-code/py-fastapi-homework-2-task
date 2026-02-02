@@ -1,8 +1,9 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -11,6 +12,14 @@ from database.models import CountryModel, GenreModel, ActorModel, LanguageModel,
 from schemas.movies import MovieListResponseSchema, MovieCreateSchema, MovieDetailResponseSchema, MovieUpdateSchema
 
 router = APIRouter()
+
+
+@router.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "Invalid input data."},
+    )
 
 
 @router.get("/movies/", response_model=MovieListResponseSchema)
@@ -37,11 +46,6 @@ async def get_movies(
 
     prev_page = f"{base_path}?page={page - 1}&per_page={per_page}" if page > 1 else None
     next_page = f"{base_path}?page={page + 1}&per_page={per_page}" if page < total_pages else None
-
-    if page == 1:
-        prev_page = None
-    if page == total_pages:
-        next_page = None
 
     if not movies:
         raise HTTPException(status_code=404, detail="No movies found.")
