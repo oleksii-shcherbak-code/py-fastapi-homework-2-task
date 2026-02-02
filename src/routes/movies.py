@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +30,7 @@ async def get_movies(
     result = await db.execute(query)
     movies = result.scalars().all()
 
-    base_path = "/theater/movies/"
+    base_path = "/api/v1/theater/movies/"
 
     prev_page = f"{base_path}?page={page - 1}&per_page={per_page}" if page > 1 else None
     next_page = f"{base_path}?page={page + 1}&per_page={per_page}" if page < total_pages else None
