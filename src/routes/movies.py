@@ -78,9 +78,17 @@ async def get_movies(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_movie(
-    data: MovieCreateSchema,
+    data_raw: dict,
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        data = MovieCreateSchema(**data_raw)
+    except (ValidationError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid input data.",
+        )
+
     if data.date > date.today() + timedelta(days=365):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -92,7 +100,6 @@ async def create_movie(
         MovieModel.date == data.date,
     )
     existing_movie = (await db.execute(stmt)).scalar_one_or_none()
-
     if existing_movie:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -115,15 +122,9 @@ async def create_movie(
         country=country,
     )
 
-    movie.genres = [
-        await get_or_create(db, GenreModel, name=g) for g in data.genres
-    ]
-    movie.actors = [
-        await get_or_create(db, ActorModel, name=a) for a in data.actors
-    ]
-    movie.languages = [
-        await get_or_create(db, LanguageModel, name=lang) for lang in data.languages
-    ]
+    movie.genres = [await get_or_create(db, GenreModel, name=g) for g in data.genres]
+    movie.actors = [await get_or_create(db, ActorModel, name=a) for a in data.actors]
+    movie.languages = [await get_or_create(db, LanguageModel, name=lang) for lang in data.languages]
 
     db.add(movie)
     await db.commit()
@@ -134,7 +135,7 @@ async def create_movie(
             selectinload(MovieModel.country),
             selectinload(MovieModel.genres),
             selectinload(MovieModel.actors),
-            selectinload(MovieModel.languages)
+            selectinload(MovieModel.languages),
         )
         .where(MovieModel.id == movie.id)
     )
@@ -179,7 +180,6 @@ async def update_movie(
             detail="Invalid input data."
         )
 
-    # 2. Пошук фільму в базі
     stmt = (
         select(MovieModel)
         .options(
