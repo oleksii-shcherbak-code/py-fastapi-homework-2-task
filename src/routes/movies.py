@@ -1,8 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -12,14 +10,6 @@ from database.models import CountryModel, GenreModel, ActorModel, LanguageModel,
 from schemas.movies import MovieListResponseSchema, MovieCreateSchema, MovieDetailResponseSchema, MovieUpdateSchema
 
 router = APIRouter()
-
-
-@router.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=400,
-        content={"detail": "Invalid input data."},
-    )
 
 
 @router.get("/movies/", response_model=MovieListResponseSchema)
